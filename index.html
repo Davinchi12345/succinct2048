@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Pink 2048 Prove Edition</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #ffc0cb;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        h1 {
+            font-size: 40px;
+            margin: 20px 0;
+            color: #d23c77;
+        }
+        .grid-container {
+            width: 450px;
+            height: 450px;
+            margin: 0 auto;
+            background-image: url('https://pbs.twimg.com/media/GvDP4GLWcAA29BD?format=jpg&name=small');
+            background-size: cover;
+            background-position: center;
+            border-radius: 6px;
+            padding: 15px;
+            box-sizing: border-box;
+            position: relative;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-gap: 15px;
+            width: 100%;
+            height: 100%;
+        }
+        .cell {
+            background-color: rgba(255, 192, 203, 0.5);
+            border-radius: 3px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 35px;
+            font-weight: bold;
+        }
+        .tile {
+            width: 100%;
+            height: 100%;
+            border-radius: 3px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 35px;
+            font-weight: bold;
+            background-color: #ffebee;
+            transition: all 0.1s;
+            color: #d23c77;
+            flex-direction: column;
+        }
+        .tile-value {
+            font-size: 35px;
+        }
+        .tile-text {
+            font-size: 12px;
+            color: #d23c77;
+            margin-top: -5px;
+        }
+        .score-container {
+            margin: 20px 0;
+            font-size: 25px;
+            color: #d23c77;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            background-color: #d23c77;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 18px;
+            margin: 0 10px;
+        }
+        .signature {
+            margin: 40px auto 20px;
+            padding: 10px;
+            color: white;
+            background-color: #d23c77;
+            border-radius: 50px;
+            width: fit-content;
+            font-family: 'Arial Rounded MT Bold', sans-serif;
+            font-size: 16px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .signature:hover {
+            background-color: #b52e60;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <h1>2048 Prove Edition</h1>
+    <div class="score-container">Score: <span id="score">0</span></div>
+    <div class="grid-container">
+        <div class="grid" id="grid"></div>
+    </div>
+    <div class="controls">
+        <button id="new-game">New Game</button>
+    </div>
+
+    <!-- Clickable signature footer -->
+    <div class="signature" onclick="window.open('https://x.com/vinchixx', '_blank')">
+        🎨 Built by the Great Davinchi 🖌️
+    </div>
+
+    <script>
+        // Game configuration
+        const config = {
+            size: 4,
+            target: 2048,
+            colors: {
+                2: "#ffcdd2",
+                4: "#ef9a9a",
+                8: "#e57373",
+                16: "#ef5350",
+                32: "#f44336",
+                64: "#e53935",
+                128: "#d32f2f",
+                256: "#c62828",
+                512: "#b71c1c",
+                1024: "#880e4f",
+                2048: "#4a148c",
+                "super": "#3c3a32"
+            },
+            textColors: {
+                light: "#f9f6f2",
+                dark: "#d23c77"
+            }
+        };
+
+        // Game state
+        let grid = [];
+        let score = 0;
+        let gameOver = false;
+        let won = false;
+
+        // Initialize the game
+        function initGame() {
+            const gridElement = document.getElementById("grid");
+            gridElement.innerHTML = "";
+            gridElement.style.gridTemplateColumns = `repeat(${config.size}, 1fr)`;
+            
+            grid = Array(config.size).fill().map(() => Array(config.size).fill(0));
+            
+            for (let i = 0; i < config.size; i++) {
+                for (let j = 0; j < config.size; j++) {
+                    const cell = document.createElement("div");
+                    cell.className = "cell";
+                    cell.id = `cell-${i}-${j}`;
+                    gridElement.appendChild(cell);
+                }
+            }
+            
+            score = 0;
+            gameOver = false;
+            won = false;
+            updateScore();
+            
+            addRandomTile();
+            addRandomTile();
+            
+            renderGrid();
+        }
+
+        // Add a random tile
+        function addRandomTile() {
+            const emptyCells = [];
+            
+            for (let i = 0; i < config.size; i++) {
+                for (let j = 0; j < config.size; j++) {
+                    if (grid[i][j] === 0) {
+                        emptyCells.push({i, j});
+                    }
+                }
+            }
+            
+            if (emptyCells.length > 0) {
+                const {i, j} = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                grid[i][j] = Math.random() < 0.9 ? 2 : 4;
+                return true;
+            }
+            
+            return false;
+        }
+
+        // Render the grid with "Prove" text
+        function renderGrid() {
+            for (let i = 0; i < config.size; i++) {
+                for (let j = 0; j < config.size; j++) {
+                    const cell = document.getElementById(`cell-${i}-${j}`);
+                    cell.innerHTML = "";
+                    
+                    if (grid[i][j] !== 0) {
+                        const tile = document.createElement("div");
+                        tile.className = "tile";
+                        
+                        const valueSpan = document.createElement("div");
+                        valueSpan.className = "tile-value";
+                        valueSpan.textContent = grid[i][j];
+                        
+                        const textSpan = document.createElement("div");
+                        textSpan.className = "tile-text";
+                        textSpan.textContent = "prove";
+                        
+                        tile.appendChild(valueSpan);
+                        tile.appendChild(textSpan);
+                        
+                        if (grid[i][j] >= 2048 && config.colors["super"]) {
+                            tile.style.backgroundColor = config.colors["super"];
+                            valueSpan.style.color = config.textColors.light;
+                            textSpan.style.color = config.textColors.light;
+                        } else if (config.colors[grid[i][j]]) {
+                            tile.style.backgroundColor = config.colors[grid[i][j]];
+                            valueSpan.style.color = grid[i][j] <= 4 ? config.textColors.dark : config.textColors.light;
+                            textSpan.style.color = grid[i][j] <= 4 ? config.textColors.dark : config.textColors.light;
+                        }
+                        
+                        cell.appendChild(tile);
+                    }
+                }
+            }
+        }
+
+        function updateScore() {
+            document.getElementById("score").textContent = score;
+        }
+
+        function checkGameOver() {
+            for (let i = 0; i < config.size; i++) {
+                for (let j = 0; j < config.size; j++) {
+                    if (grid[i][j] === 0) {
+                        return false;
+                    }
+                }
+            }
+            
+            for (let i = 0; i < config.size; i++) {
+                for (let j = 0; j < config.size; j++) {
+                    if (j < config.size - 1 && grid[i][j] === grid[i][j + 1]) {
+                        return false;
+                    }
+                    if (i < config.size - 1 && grid[i][j] === grid[i + 1][j]) {
+                        return false;
+                    }
+                }
+            }
+            
+            return true;
+        }
+
+        function checkWin() {
+            if (won) return true;
+            
+            for (let i = 0; i < config.size; i++) {
+                for (let j = 0; j < config.size; j++) {
+                    if (grid[i][j] === config.target) {
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        }
+
+        function moveTiles(direction) {
+            if (gameOver) return false;
+            
+            let moved = false;
+            const oldGrid = JSON.parse(JSON.stringify(grid));
+            
+            if (direction === "up" || direction === "down") {
+                grid = grid[0].map((_, i) => grid.map(row => row[i]));
+            }
+            
+            if (direction === "right" || direction === "down") {
+                grid.forEach(row => row.reverse());
+            }
+            
+            for (let i = 0; i < config.size; i++) {
+                let row = grid[i].filter(val => val !== 0);
+                
+                for (let j = 0; j < row.length - 1; j++) {
+                    if (row[j] === row[j + 1]) {
+                        row[j] *= 2;
+                        score += row[j];
+                        row[j + 1] = 0;
+                        
+                        if (row[j] === config.target) {
+                            won = true;
+                        }
+                    }
+                }
+                
+                row = row.filter(val => val !== 0);
+                
+                while (row.length < config.size) {
+                    row.push(0);
+                }
+                
+                if (!arraysEqual(grid[i], row)) {
+                    grid[i] = row;
+                    moved = true;
+                }
+            }
+            
+            if (direction === "right" || direction === "down") {
+                grid.forEach(row => row.reverse());
+            }
+            
+            if (direction === "up" || direction === "down") {
+                grid = grid[0].map((_, i) => grid.map(row => row[i]));
+            }
+            
+            if (moved) {
+                addRandomTile();
+                renderGrid();
+                updateScore();
+                
+                if (checkGameOver()) {
+                    gameOver = true;
+                    setTimeout(() => {
+                        alert(`Game Over! Your score: ${score}`);
+                    }, 100);
+                }
+                
+                if (checkWin() && !won) {
+                    won = true;
+                    setTimeout(() => {
+                        if (confirm(`You reached ${config.target}! Continue playing?`)) {
+                            won = true;
+                        } else {
+                            gameOver = true;
+                        }
+                    }, 100);
+                }
+            }
+            
+            return moved;
+        }
+
+        function arraysEqual(a, b) {
+            if (a.length !== b.length) return false;
+            for (let i = 0; i < a.length; i++) {
+                if (a[i] !== b[i]) return false;
+            }
+            return true;
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            initGame();
+            
+            document.addEventListener("keydown", (e) => {
+                switch (e.key) {
+                    case "ArrowUp":
+                        moveTiles("up");
+                        break;
+                    case "ArrowDown":
+                        moveTiles("down");
+                        break;
+                    case "ArrowLeft":
+                        moveTiles("left");
+                        break;
+                    case "ArrowRight":
+                        moveTiles("right");
+                        break;
+                }
+            });
+            
+            document.getElementById("new-game").addEventListener("click", initGame);
+        });
+    </script>
+</body>
+</html>
